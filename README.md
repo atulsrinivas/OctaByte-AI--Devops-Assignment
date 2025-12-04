@@ -139,3 +139,37 @@ RDS db.t3.micro (low-cost)
 Use S3 lifecycle rules for logs
 Stateless application architecture
 ALB in two AZs for HA but minimal impact
+
+
+-->How to Deploy<--
+
+Step 1 — Clone Repository
+git clone https://github.com/atulsrinivas/OctaByte-AI--Devops-Assignment.git
+
+Step 2 — Initialize Terraform
+cd infra
+terraform init
+terraform plan
+terraform apply
+
+Step 3 — Push to ECR and Deploy
+
+GitHub Actions will automatically:
+
+Build the image
+Push to ECR
+Deploy to ECS staging
+Wait for manual approval
+Deploy to production
+
+Step 4 — Get Application URL
+terraform output alb_dns
+
+Open:
+http://<ALB-DNS>/
+
+Sample Output- 
+{
+  "message": "Welcome to OctaByte AI - ECS Deployment Successful!"
+}
+
