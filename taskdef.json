@@ -1,0 +1,21 @@
+{
+  "family": "octabyte-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "REPLACE_ME",
+  "taskRoleArn": "REPLACE_ME",
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "ECR_IMAGE_URI",
+      "portMappings": [
+        {
+          "containerPort": 5000,
+          "hostPort": 5000
+        }
+      ]
+    }
+  ]
+}
