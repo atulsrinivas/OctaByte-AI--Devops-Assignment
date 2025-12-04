@@ -1,0 +1,85 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: octabyte-app-repo
+  SERVICE_NAME: octabyte-app-service
+  CLUSTER_NAME: octabyte-app-cluster
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build Docker Image
+        run: |
+          docker build -t $ECR_REPOSITORY:latest ./app
+          docker tag $ECR_REPOSITORY:latest ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Push Image to ECR
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Update Task Definition
+        run: |
+          sed -i "s|ECR_IMAGE_URI|${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest|g" taskdef.json
+          echo "Task definition updated."
+
+      - name: Deploy to ECS (Staging)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: taskdef.json
+          service: ${{ env.SERVICE_NAME }}-staging
+          cluster: ${{ env.CLUSTER_NAME }}
+          wait-for-service-stability: true
+
+  approve-production:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://your-production-url
+
+    steps:
+      - name: Wait for manual approval
+        run: |
+          echo "Approve the deployment from the GitHub UI"
+        shell: bash
+
+  deploy-production:
+    needs: approve-production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Deploy to ECS (Production)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: taskdef.json
+          service: ${{ env.SERVICE_NAME }}-prod
+          cluster: ${{ env.CLUSTER_NAME }}
+          wait-for-service-stability: true

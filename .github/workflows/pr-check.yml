@@ -1,0 +1,49 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pr-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install dependencies
+        run: |
+          cd app
+          pip install -r requirements.txt
+
+      - name: Run Unit Tests
+        run: |
+          echo "No unit tests added, but this is where they run"
+
+      - name: Lint Python Code (flake8)
+        run: |
+          pip install flake8
+          flake8 app --ignore=E501
+
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@master
+
+      - name: Scan dependencies
+        run: trivy fs --severity HIGH,CRITICAL .
+
+      - name: Scan Docker image for vulnerabilities
+        run: |
+          docker build -t temp-app:latest .
+          trivy image --severity HIGH,CRITICAL temp-app:latest
